@@ -85,6 +85,12 @@ The release workflow packages the plugin as `figma-mcp-go2-plugin.zip` and uploa
 - Text nodes with mixed formatting expose `styles.textRanges`. Each range uses zero-based `start` and exclusive `end` offsets and includes the font family, font style, font size, fills, text decoration, and text case for that range.
 - The richer serialization is enabled for `get_node`, including its returned child nodes. Other existing tools keep their previous response shape.
 
+新增功能：
+1. get_node 现在保留渐变填充，返回渐变类型、颜色停靠点、透明度和方向信息。
+2. 混合文本样式现在按区间返回，例如：
+  - start: 0, end: 2：#666666
+  - start: 2, end: 4：#000000
+
 For example, a gradient button can now include:
 
 ```json

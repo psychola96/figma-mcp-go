@@ -45,6 +45,13 @@ jobs:
             done
           done
 
+      - name: Package Figma plugin
+        run: |
+          mkdir -p dist/figma-mcp-go2-plugin
+          cp plugin/manifest.json plugin/code.js plugin/ui.html dist/figma-mcp-go2-plugin/
+          (cd dist/figma-mcp-go2-plugin && zip -q ../figma-mcp-go2-plugin.zip manifest.json code.js ui.html)
+          rm -rf dist/figma-mcp-go2-plugin
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:

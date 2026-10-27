@@ -8,17 +8,27 @@ const toHex = (color) => {
   return `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 };
 
-const serializePaints = (paints) => {
+const serializePaints = (paints, rich = false) => {
   if (isMixed(paints) || !paints || !Array.isArray(paints)) {
     return isMixed(paints) ? "mixed" : [];
   }
-  return paints
-    .filter((paint) => paint.type === "SOLID" && "color" in paint)
-    .map((paint) => ({
-      type: paint.type,
-      color: paint.type === "SOLID" ? toHex(paint.color) : undefined,
-      opacity: paint.opacity,
-    }));
+  return paints.flatMap((paint) => {
+    if (paint.type === "SOLID" && "color" in paint) {
+      return [{ type: paint.type, color: toHex(paint.color), opacity: paint.opacity }];
+    }
+    if (!rich || !paint.type) return [];
+    const serialized = { type: paint.type, opacity: paint.opacity, visible: paint.visible };
+    if (paint.gradientStops) {
+      serialized.gradientStops = paint.gradientStops.map((stop) => ({
+        position: stop.position,
+        color: toHex(stop.color),
+        opacity: stop.color.a == null ? 1 : stop.color.a,
+      }));
+    }
+    if (paint.gradientHandlePositions) serialized.gradientHandlePositions = paint.gradientHandlePositions;
+    if (paint.imageRef) serialized.imageRef = paint.imageRef;
+    return [serialized];
+  });
 };
 
 const getBounds = (node) => {
@@ -28,10 +38,10 @@ const getBounds = (node) => {
   return undefined;
 };
 
-const serializeStyles = (node) => {
+const serializeStyles = (node, options = {}) => {
   const styles = {};
-  if ("fills" in node) styles.fills = serializePaints(node.fills);
-  if ("strokes" in node) styles.strokes = serializePaints(node.strokes);
+  if ("fills" in node) styles.fills = serializePaints(node.fills, options.rich);
+  if ("strokes" in node) styles.strokes = serializePaints(node.strokes, options.rich);
   if ("cornerRadius" in node) {
     styles.cornerRadius = isMixed(node.cornerRadius) ? "mixed" : node.cornerRadius;
   }
@@ -46,7 +56,38 @@ const serializeStyles = (node) => {
   return styles;
 };
 
-const serializeText = (node, base) => {
+const getTextRangeStyle = (node, start, end) => {
+  const range = {};
+  const fontName = node.getRangeFontName(start, end);
+  range.fontFamily = isMixed(fontName) ? "mixed" : fontName && fontName.family;
+  range.fontStyle = isMixed(fontName) ? "mixed" : fontName && fontName.style;
+  range.fontSize = isMixed(node.getRangeFontSize(start, end)) ? "mixed" : node.getRangeFontSize(start, end);
+  range.fills = serializePaints(node.getRangeFills(start, end), true);
+  range.textDecoration = isMixed(node.getRangeTextDecoration(start, end)) ? "mixed" : node.getRangeTextDecoration(start, end);
+  range.textCase = isMixed(node.getRangeTextCase(start, end)) ? "mixed" : node.getRangeTextCase(start, end);
+  return range;
+};
+
+const serializeTextRanges = (node) => {
+  const length = node.characters.length;
+  if (!length || typeof node.getRangeFontName !== "function") return [];
+  const ranges = [];
+  let start = 0;
+  let previous = JSON.stringify(getTextRangeStyle(node, 0, 1));
+  for (let end = 1; end < length; end++) {
+    const currentStyle = getTextRangeStyle(node, end, end + 1);
+    const current = JSON.stringify(currentStyle);
+    if (current !== previous) {
+      ranges.push(Object.assign({ start, end }, JSON.parse(previous)));
+      start = end;
+      previous = current;
+    }
+  }
+  ranges.push(Object.assign({ start, end: length }, JSON.parse(previous)));
+  return ranges;
+};
+
+const serializeText = (node, base, options = {}) => {
   let font;
   if (typeof node.fontName === "symbol") {
     font = "mixed";
@@ -59,21 +100,22 @@ const serializeText = (node, base) => {
       fontSize: isMixed(node.fontSize) ? "mixed" : node.fontSize,
       fontFamily: font,
       textAlignHorizontal: isMixed(node.textAlignHorizontal) ? "mixed" : node.textAlignHorizontal,
+      ...(options.rich ? { textRanges: serializeTextRanges(node) } : {}),
     }),
   });
 };
 
-const serializeNode = (node) => {
+const serializeNode = (node, options = {}) => {
   const base = {
     id: node.id,
     name: node.name,
     type: node.type,
     bounds: getBounds(node),
-    styles: serializeStyles(node),
+    styles: serializeStyles(node, options),
   };
-  if (node.type === "TEXT") return serializeText(node, base);
+  if (node.type === "TEXT") return serializeText(node, base, options);
   if ("children" in node) {
-    return Object.assign({}, base, { children: node.children.map((child) => serializeNode(child)) });
+    return Object.assign({}, base, { children: node.children.map((child) => serializeNode(child, options)) });
   }
   return base;
 };
@@ -120,7 +162,7 @@ const handleRequest = async (request) => {
         if (!nodeId) throw new Error("nodeIds is required for get_node");
         const node = await figma.getNodeByIdAsync(nodeId);
         if (!node || node.type === "DOCUMENT") throw new Error(`Node not found: ${nodeId}`);
-        return { type: request.type, requestId: request.requestId, data: serializeNode(node) };
+        return { type: request.type, requestId: request.requestId, data: serializeNode(node, { rich: true }) };
       }
 
       case "get_styles": {

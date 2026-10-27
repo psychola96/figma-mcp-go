@@ -1,6 +1,6 @@
 {
-  "name": "Figma MCP Go",
-  "id": "figma-mcp-go",
+  "name": "figma-mcp-go2",
+  "id": "figma-mcp-go2",
   "api": "1.0.0",
   "main": "code.js",
   "ui": "ui.html",

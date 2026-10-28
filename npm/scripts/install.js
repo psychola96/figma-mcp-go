@@ -33,7 +33,7 @@ const isWindows = goos === 'windows';
 const binaryName = isWindows ? 'figma-mcp-go.exe' : 'figma-mcp-go';
 const ext = isWindows ? '.zip' : '.tar.gz';
 const archiveName = `figma-mcp-go_${goos}_${goarch}${ext}`;
-const downloadUrl = `https://github.com/vkhanhqui/figma-mcp-go/releases/download/v${version}/${archiveName}`;
+const downloadUrl = `https://github.com/psychola96/figma-mcp-go/releases/download/v${version}/${archiveName}`;
 const binDir = path.join(__dirname, '..', 'bin');
 const tmpFile = path.join(os.tmpdir(), archiveName);
 

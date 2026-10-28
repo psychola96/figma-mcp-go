@@ -35,12 +35,12 @@ Watch the video:
 ```json
 {
 	"servers": {
-		"figma-mcp-go": {
+		"figma-mcp-go2": {
 			"type": "stdio",
 			"command": "npx",
 			"args": [
 				"-y",
-				"@vkhanhqui/figma-mcp-go"
+				"figma-mcp-go2"
 			]
 		}
 	}
@@ -51,9 +51,9 @@ Watch the video:
 ```json
 {
   "mcpServers": {
-    "figma-mcp-go": {
+    "figma-mcp-go2": {
       "command": "npx",
-      "args": ["-y", "@vkhanhqui/figma-mcp-go"]
+      "args": ["-y", "figma-mcp-go2"]
     }
   }
 }
@@ -76,6 +76,14 @@ dist/figma-mcp-go2-plugin/manifest.json
 ```
 
 The release workflow packages the plugin as `figma-mcp-go2-plugin.zip` and uploads it to the GitHub Release when a `v*` tag is pushed.
+
+For other users, the setup command downloads the matching MCP binary and plugin files automatically:
+
+```bash
+npx -y figma-mcp-go2 setup
+```
+
+It installs the plugin files under `~/.figma-mcp-go2/plugin` and writes an MCP configuration example to `~/.figma-mcp-go2/mcp-config.json`. Figma Desktop still requires one manual **Plugins → Development → Import plugin from manifest** action using the printed manifest path.
 
 ## Changes in figma-mcp-go2
 
@@ -130,7 +138,7 @@ Mixed text can now include ranges such as:
 }
 ```
 
-The existing npm package remains `@vkhanhqui/figma-mcp-go`; the `figma-mcp-go2` name identifies the separate Figma plugin variant.
+The npm package and Figma plugin are both named `figma-mcp-go2` in this fork. The plugin uses its own numeric Figma ID and can be installed as a development plugin alongside the original plugin.
 
 ---
 

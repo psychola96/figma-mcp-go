@@ -15,6 +15,10 @@ const downloadUrl = `https://github.com/${repository}/releases/download/v${versi
 const setupRoot = process.env.FIGMA_MCP_GO2_HOME || path.join(os.homedir(), '.figma-mcp-go2');
 const pluginDir = path.join(setupRoot, 'plugin');
 const configPath = path.join(setupRoot, 'mcp-config.json');
+const codexHome = process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
+const codexConfigPath = path.join(codexHome, 'config.toml');
+const claudeConfigPath = path.join(setupRoot, 'claude-mcp-config.json');
+const deepseekConfigPath = path.join(setupRoot, 'deepseek-mcp-config.json');
 const tmpFile = path.join(os.tmpdir(), `figma-mcp-go2-${process.pid}.zip`);
 const tmpExtract = path.join(os.tmpdir(), `figma-mcp-go2-${process.pid}`);
 
@@ -80,6 +84,49 @@ function findFileIn(directory, name) {
   return null;
 }
 
+function configureCodex() {
+  if (!fs.existsSync(codexConfigPath)) return false;
+  let config = fs.readFileSync(codexConfigPath, 'utf8');
+  const section = '[mcp_servers.figma-mcp-go2]';
+  if (!config.includes(section)) {
+    const block = `\n${section}\ncommand = "npx"\nargs = ["-y", "figma-mcp-go2"]\nstartup_timeout_sec = 120\nenabled = true\n`;
+    fs.appendFileSync(codexConfigPath, block);
+  } else {
+    config = config.replace(/(\[mcp_servers\.figma-mcp-go2\][\s\S]*?)(?=\n\[|$)/, (match) => {
+      let updated = match.replace(/^enabled\s*=.*$/m, 'enabled = true');
+      if (!/^enabled\s*=/m.test(updated)) updated += '\nenabled = true';
+      return updated;
+    });
+    fs.writeFileSync(codexConfigPath, config);
+  }
+  return true;
+}
+
+function mcpServerConfig() {
+  return {
+    mcpServers: {
+      'figma-mcp-go2': {
+        command: 'npx',
+        args: ['-y', 'figma-mcp-go2'],
+      },
+    },
+  };
+}
+
+function configureClaude() {
+  fs.writeFileSync(claudeConfigPath, `${JSON.stringify(mcpServerConfig(), null, 2)}\n`);
+  try {
+    const command = process.platform === 'win32' ? 'where' : 'which';
+    execFileSync(command, ['claude'], { stdio: 'ignore' });
+    execFileSync('claude', [
+      'mcp', 'add', '--scope', 'user', 'figma-mcp-go2', '--', 'npx', '-y', 'figma-mcp-go2',
+    ], { stdio: 'ignore' });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 async function main() {
   console.log(`[figma-mcp-go2] Downloading ${archiveName} v${version}...`);
   try {
@@ -95,18 +142,23 @@ async function main() {
     for (const file of sourceFiles) fs.copyFileSync(file.source, path.join(pluginDir, file.name));
 
     fs.mkdirSync(setupRoot, { recursive: true });
-    fs.writeFileSync(configPath, `${JSON.stringify({
-      mcpServers: {
-        'figma-mcp-go2': {
-          command: 'npx',
-          args: ['-y', 'figma-mcp-go2'],
-        },
-      },
-    }, null, 2)}\n`);
+    const mcpConfig = mcpServerConfig();
+    fs.writeFileSync(configPath, `${JSON.stringify(mcpConfig, null, 2)}\n`);
+    fs.writeFileSync(deepseekConfigPath, `${JSON.stringify(mcpConfig, null, 2)}\n`);
+
+    const codexConfigured = configureCodex();
+    const claudeConfigured = configureClaude();
 
     console.log('[figma-mcp-go2] Plugin installed.');
     console.log(`[figma-mcp-go2] Import this manifest in Figma Desktop:\n  ${path.join(pluginDir, 'manifest.json')}`);
     console.log(`[figma-mcp-go2] MCP config example written to:\n  ${configPath}`);
+    console.log(`[figma-mcp-go2] Claude Code config written to:\n  ${claudeConfigPath}`);
+    console.log(`[figma-mcp-go2] DeepSeek Harness config written to:\n  ${deepseekConfigPath}`);
+    if (claudeConfigured) console.log('[figma-mcp-go2] Claude Code MCP configuration updated automatically.');
+    if (codexConfigured) {
+      console.log(`[figma-mcp-go2] Codex MCP configuration updated:\n  ${codexConfigPath}`);
+      console.log('[figma-mcp-go2] Restart Codex to load the new MCP server.');
+    }
   } catch (error) {
     console.error(`[figma-mcp-go2] Setup failed: ${error.message}`);
     console.error(`[figma-mcp-go2] URL: ${downloadUrl}`);

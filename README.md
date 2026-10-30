@@ -83,7 +83,34 @@ For other users, the setup command downloads the matching MCP binary and plugin 
 npx -y figma-mcp-go2 setup
 ```
 
-It installs the plugin files under `~/.figma-mcp-go2/plugin` and writes an MCP configuration example to `~/.figma-mcp-go2/mcp-config.json`. Figma Desktop still requires one manual **Plugins → Development → Import plugin from manifest** action using the printed manifest path.
+It installs the plugin files under `~/.figma-mcp-go2/plugin` and writes configuration files for Codex, Claude Code, DeepSeek Harness, and generic MCP clients. If the `claude` CLI is installed, the command also registers the MCP server in the user-level Claude Code configuration. Figma Desktop still requires one manual **Plugins → Development → Import plugin from manifest** action using the printed manifest path.
+
+If Codex, Claude Code, DeepSeek Harness, or another MCP client does not automatically load the server, add it manually with this configuration:
+
+```json
+{
+  "mcpServers": {
+    "figma-mcp-go2": {
+      "command": "npx",
+      "args": ["-y", "figma-mcp-go2"]
+    }
+  }
+}
+```
+
+After adding the server, restart the client. In Figma Desktop, import the printed `manifest.json` manually through **Plugins → Development → Import plugin from manifest**, then run `figma-mcp-go2` in the Figma file.
+
+### MCP server and logs
+
+The Go package `github.com/mark3labs/mcp-go/server` provides the MCP protocol server. This repository uses it to create the MCP server, register tools and prompts, and serve requests over stdio so Codex, Claude Code, DeepSeek Harness, and other MCP clients can launch the process.
+
+That package is not the application's logging system. The application writes diagnostic logs to stderr with Go's standard `log` package. Logs include server startup and shutdown, MCP tool requests, WebSocket plugin connections, request completion, timeouts, errors, leader/follower election, and plugin responses. MCP clients normally keep stderr separate from the JSON-RPC protocol stream on stdout.
+
+Generated configuration files:
+
+- `~/.figma-mcp-go2/mcp-config.json` — generic MCP configuration
+- `~/.figma-mcp-go2/claude-mcp-config.json` — Claude Code import/reference configuration
+- `~/.figma-mcp-go2/deepseek-mcp-config.json` — DeepSeek Harness import/reference configuration
 
 ## Changes in figma-mcp-go2
 

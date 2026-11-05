@@ -2,6 +2,9 @@
 
 > A **zero-cost, unlimited** Figma MCP server — no API key, no rate limits, just a single Go binary.
 
+> This project is developed as a fork of the original [`figma-mcp-go`](https://github.com/RamenSV/figma-mcp-go) project.
+> See [CHANGELOG.md](CHANGELOG.md) for details about the changes in this fork.
+
 Works with Cursor, Claude, GitHub Copilot, and any MCP-compatible AI tool.
 
 ---

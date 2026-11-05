@@ -2,6 +2,9 @@
 
 > A **zero-cost, unlimited** Figma MCP server — no API key, no rate limits, just a single Go binary.
 
+> This project is developed as a fork of the original [`figma-mcp-go`](https://github.com/RamenSV/figma-mcp-go) project.
+> See [CHANGELOG.md](CHANGELOG.md) for details about the changes in this fork.
+
 Works with Cursor, Claude, GitHub Copilot, and any MCP-compatible AI tool.
 
 ---
@@ -84,6 +87,27 @@ npx -y figma-mcp-go2 setup
 ```
 
 It installs the plugin files under `~/.figma-mcp-go2/plugin` and writes configuration files for Codex, Claude Code, DeepSeek Harness, and generic MCP clients. If the `claude` CLI is installed, the command also registers the MCP server in the user-level Claude Code configuration. Figma Desktop still requires one manual **Plugins → Development → Import plugin from manifest** action using the printed manifest path.
+
+If Codex, Claude Code, DeepSeek Harness, or another MCP client does not automatically load the server, add it manually with this configuration:
+
+```json
+{
+  "mcpServers": {
+    "figma-mcp-go2": {
+      "command": "npx",
+      "args": ["-y", "figma-mcp-go2"]
+    }
+  }
+}
+```
+
+After adding the server, restart the client. In Figma Desktop, import the printed `manifest.json` manually through **Plugins → Development → Import plugin from manifest**, then run `figma-mcp-go2` in the Figma file.
+
+### MCP server and logs
+
+The Go package `github.com/mark3labs/mcp-go/server` provides the MCP protocol server. This repository uses it to create the MCP server, register tools and prompts, and serve requests over stdio so Codex, Claude Code, DeepSeek Harness, and other MCP clients can launch the process.
+
+That package is not the application's logging system. The application writes diagnostic logs to stderr with Go's standard `log` package. Logs include server startup and shutdown, MCP tool requests, WebSocket plugin connections, request completion, timeouts, errors, leader/follower election, and plugin responses. MCP clients normally keep stderr separate from the JSON-RPC protocol stream on stdout.
 
 Generated configuration files:
 

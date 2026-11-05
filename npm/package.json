@@ -1,6 +1,6 @@
 {
   "name": "figma-mcp-go2",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "A zero-cost, unlimited Figma MCP server — no API key, no rate limits",
   "mcpName": "io.github.psychola96/figma-mcp-go2",
   "bin": {

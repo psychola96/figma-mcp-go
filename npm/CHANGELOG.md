@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [v2.0.7] - 2026-11-05
 
 - Verify SHA-256 checksums for downloaded release archives before extraction.
 - Limit downloads to HTTPS with a bounded redirect count.

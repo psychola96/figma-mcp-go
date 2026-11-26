@@ -2,6 +2,13 @@
 
 This file records the major changes in this fork compared with the original `figma-mcp-go` project, based on the Git commit history.
 
+## [v2.0.7] - 2026-11-05
+
+- Verify SHA-256 checksums for downloaded release archives before extraction.
+- Limit downloads to HTTPS with a bounded redirect count.
+
+This file records the major changes in this fork compared with the original `figma-mcp-go` project, based on the Git commit history.
+
 ## [v2.0.3] - 2026-10-30
 
 - Added automatic MCP client configuration injection.

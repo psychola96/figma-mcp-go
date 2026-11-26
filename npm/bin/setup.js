@@ -4,6 +4,7 @@
 const https = require('node:https');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const os = require('node:os');
 const { execFileSync } = require('node:child_process');
 
@@ -21,22 +22,23 @@ const claudeConfigPath = path.join(setupRoot, 'claude-mcp-config.json');
 const deepseekConfigPath = path.join(setupRoot, 'deepseek-mcp-config.json');
 const tmpFile = path.join(os.tmpdir(), `figma-mcp-go2-${process.pid}.zip`);
 const tmpExtract = path.join(os.tmpdir(), `figma-mcp-go2-${process.pid}`);
+const checksumsPath = path.join(__dirname, '..', 'checksums', `${version}.json`);
 
 function download(url, destination) {
   return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(destination);
-    const request = (currentUrl) => {
+    const request = (currentUrl, redirects = 0) => {
+      if (redirects > 5 || !currentUrl.startsWith('https://')) return reject(new Error(`Refusing unsafe download URL: ${currentUrl}`));
       https.get(currentUrl, (response) => {
         if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
           response.resume();
-          return request(response.headers.location);
+          return request(new URL(response.headers.location, currentUrl).toString(), redirects + 1);
         }
         if (response.statusCode !== 200) {
           response.resume();
-          file.close();
           fs.rmSync(destination, { force: true });
           return reject(new Error(`HTTP ${response.statusCode} downloading ${currentUrl}`));
         }
+        const file = fs.createWriteStream(destination);
         response.pipe(file);
         file.on('finish', () => file.close(resolve));
         file.on('error', reject);
@@ -44,6 +46,15 @@ function download(url, destination) {
     };
     request(url);
   });
+}
+
+function verifyChecksum(file) {
+  if (!fs.existsSync(checksumsPath)) throw new Error(`Missing integrity manifest: ${checksumsPath}`);
+  const checksums = JSON.parse(fs.readFileSync(checksumsPath, 'utf8'));
+  const expected = checksums[archiveName];
+  if (!/^[a-f0-9]{64}$/i.test(expected || '')) throw new Error(`Missing SHA-256 for ${archiveName}`);
+  const actual = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  if (actual.toLowerCase() !== expected.toLowerCase()) throw new Error(`SHA-256 mismatch for ${archiveName}: expected ${expected}, got ${actual}`);
 }
 
 function extractArchive() {
@@ -131,6 +142,7 @@ async function main() {
   console.log(`[figma-mcp-go2] Downloading ${archiveName} v${version}...`);
   try {
     await download(downloadUrl, tmpFile);
+    verifyChecksum(tmpFile);
     extractArchive();
 
     const files = ['manifest.json', 'code.js', 'ui.html'];

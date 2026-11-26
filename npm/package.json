@@ -14,7 +14,8 @@
     "README.md",
     "bin/run.js",
     "bin/setup.js",
-    "scripts"
+    "scripts",
+    "checksums"
   ],
   "keywords": [
     "figma",

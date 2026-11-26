@@ -86,6 +86,9 @@ For other users, the setup command downloads the matching MCP binary and plugin 
 npx -y figma-mcp-go2 setup
 ```
 
+Release archives are verified against a versioned SHA-256 manifest before they are extracted. If the
+archive is missing or its checksum does not match, installation stops without installing the binary or plugin.
+
 It installs the plugin files under `~/.figma-mcp-go2/plugin` and writes configuration files for Codex, Claude Code, DeepSeek Harness, and generic MCP clients. If the `claude` CLI is installed, the command also registers the MCP server in the user-level Claude Code configuration. Figma Desktop still requires one manual **Plugins → Development → Import plugin from manifest** action using the printed manifest path.
 
 If Codex, Claude Code, DeepSeek Harness, or another MCP client does not automatically load the server, add it manually with this configuration:

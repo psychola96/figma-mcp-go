@@ -58,6 +58,22 @@ jobs:
           files: dist/*
           generate_release_notes: true
 
+      - name: Generate npm integrity manifest
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          mkdir -p npm/checksums
+          node - <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+          const version = process.env.VERSION;
+          const manifest = {};
+          for (const name of fs.readdirSync('dist')) {
+            manifest[name] = crypto.createHash('sha256').update(fs.readFileSync(`dist/${name}`)).digest('hex');
+          }
+          fs.writeFileSync(`npm/checksums/${version}.json`, `${JSON.stringify(manifest, null, 2)}\n`);
+          NODE
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'

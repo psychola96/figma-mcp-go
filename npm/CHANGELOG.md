@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Verify SHA-256 checksums for downloaded release archives before extraction.
+- Limit downloads to HTTPS with a bounded redirect count.
+
 This file records the major changes in this fork compared with the original `figma-mcp-go` project, based on the Git commit history.
 
 ## [v2.0.5] - 2026-11-05
@@ -32,6 +37,45 @@ This file records the major changes in this fork compared with the original `fig
 - Applied the enhanced serialization to `get_node` and its child nodes while preserving the existing response shape of other tools.
 - Simplified the Figma plugin structure with standalone plugin code and UI files.
 - Added a GitHub Actions release workflow to build binaries and package the plugin archive automatically.
+
+For example, a gradient button can now include:
+
+```json
+{
+  "type": "GRADIENT_LINEAR",
+  "gradientStops": [
+    { "position": 0, "color": "#ff9a15", "opacity": 1 },
+    { "position": 1, "color": "#ff5f11", "opacity": 1 }
+  ],
+  "gradientHandlePositions": [
+    { "x": 0.1, "y": 0.2 },
+    { "x": 0.9, "y": 0.8 }
+  ]
+}
+```
+
+Mixed text can now include ranges such as:
+
+```json
+{
+  "textRanges": [
+    {
+      "start": 0,
+      "end": 2,
+      "fontFamily": "Inter",
+      "fontSize": 14,
+      "fills": [{ "type": "SOLID", "color": "#666666", "opacity": 1 }]
+    },
+    {
+      "start": 2,
+      "end": 10,
+      "fontFamily": "Inter",
+      "fontSize": 14,
+      "fills": [{ "type": "SOLID", "color": "#000000", "opacity": 1 }]
+    }
+  ]
+}
+```
 
 ## Initial release - 2026-03-26
 

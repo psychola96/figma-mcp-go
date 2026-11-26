@@ -4,6 +4,7 @@
 const https = require('node:https');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const os = require('node:os');
 
@@ -36,21 +37,22 @@ const archiveName = `figma-mcp-go_${goos}_${goarch}${ext}`;
 const downloadUrl = `https://github.com/psychola96/figma-mcp-go/releases/download/v${version}/${archiveName}`;
 const binDir = path.join(__dirname, '..', 'bin');
 const tmpFile = path.join(os.tmpdir(), archiveName);
+const checksumsPath = path.join(__dirname, '..', 'checksums', `${version}.json`);
 
 function download(url, dest) {
   return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
-    function get(u) {
+    function get(u, redirects = 0) {
+      if (redirects > 5 || !u.startsWith('https://')) return reject(new Error(`Refusing unsafe download URL: ${u}`));
       https.get(u, (res) => {
-        if (res.statusCode === 301 || res.statusCode === 302) {
-          return get(res.headers.location);
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          res.resume();
+          return get(new URL(res.headers.location, u).toString(), redirects + 1);
         }
         if (res.statusCode !== 200) {
-          file.close();
-          fs.rmSync(dest, { force: true });
-          reject(new Error(`HTTP ${res.statusCode} downloading ${u}`));
-          return;
+          res.resume();
+          return reject(new Error(`HTTP ${res.statusCode} downloading ${u}`));
         }
+        const file = fs.createWriteStream(dest);
         res.pipe(file);
         file.on('finish', () => file.close(resolve));
         file.on('error', reject);
@@ -60,13 +62,25 @@ function download(url, dest) {
   });
 }
 
+function verifyChecksum(file) {
+  if (!fs.existsSync(checksumsPath)) throw new Error(`Missing integrity manifest: ${checksumsPath}`);
+  const checksums = JSON.parse(fs.readFileSync(checksumsPath, 'utf8'));
+  const expected = checksums[archiveName];
+  if (!/^[a-f0-9]{64}$/i.test(expected || '')) throw new Error(`Missing SHA-256 for ${archiveName}`);
+  const actual = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  if (actual.toLowerCase() !== expected.toLowerCase()) {
+    throw new Error(`SHA-256 mismatch for ${archiveName}: expected ${expected}, got ${actual}`);
+  }
+}
+
 async function main() {
   console.log(`[figma-mcp-go] Downloading ${archiveName}...`);
 
   try {
     await download(downloadUrl, tmpFile);
+    verifyChecksum(tmpFile);
   } catch (err) {
-    console.error(`[figma-mcp-go] Failed to download: ${err.message}`);
+    console.error(`[figma-mcp-go] Download or integrity verification failed: ${err.message}`);
     console.error(`[figma-mcp-go] URL: ${downloadUrl}`);
     process.exit(1);
   }
